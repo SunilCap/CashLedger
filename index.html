@@ -107,6 +107,7 @@ summary{padding:14px 16px}
   </div>
   <div class="box lim" id="lim"><span id="limt"></span><div class="bar"><i id="limb"></i></div></div>
 
+  <div class="d" id="svm" style="margin:-2px 2px 10px"></div>
   <form id="f">
     <div class="seg" role="group" aria-label="Type">
       <button type="button" data-k="r" class="on r">Received</button>
@@ -137,6 +138,19 @@ summary{padding:14px 16px}
 
   <details><summary>Spending by category</summary><div class="pn" id="cbd"></div></details>
   <details><summary>Lent &amp; borrowed</summary><div class="pn" id="loans"></div></details>
+  <details><summary>Savings</summary><div class="pn">
+    <div id="savs"></div>
+    <div class="row" style="margin-top:10px">
+      <label>Amount (₹)<input id="sva" type="number" min="0" step="0.01" inputmode="decimal" style="width:110px"></label>
+      <label>Note<input id="svn" placeholder="optional" style="width:140px"></label>
+      <button class="btn" id="svin" type="button">Move to savings</button>
+      <button class="btn" id="svout" type="button">Withdraw to cash</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label>Goal name<input id="gn" style="width:140px"></label>
+      <label>Target (₹)<input id="gt" type="number" min="0" style="width:110px"></label>
+    </div>
+    <ul id="svl" style="margin-top:8px"></ul></div></details>
   <details><summary>Cash count (daily check)</summary><div class="pn"><div class="den" id="den"></div><p id="cres" style="margin:12px 0 0"></p></div></details>
   <details><summary>Monthly spending limit</summary><div class="pn row"><label>Limit (₹)<input id="limin" type="number" min="0" step="1"></label><span class="d">Set 0 to turn off. You get a warning at 80%.</span></div></details>
   <details><summary>Recurring entries</summary><div class="pn">
@@ -148,6 +162,12 @@ summary{padding:14px 16px}
       <label>Day (1-28)<input id="rd" type="number" min="1" max="28" value="1" style="width:70px"></label>
       <button class="btn" id="radd" type="button">Add</button>
     </div><ul id="rl" style="margin-top:8px"></ul></div></details>
+
+  <details><summary>Export &amp; backup</summary><div class="pn">
+    <p class="d" style="margin:0 0 10px">Every change saves automatically on this device. Export to keep a copy elsewhere.</p>
+    <div class="row"><label>CSV period<select id="xp"><option value="view">Month shown above</option><option value="all">All time</option></select></label><button class="btn" id="xcsv" type="button">Export CSV</button></div>
+    <div class="row" style="margin-top:10px"><button class="btn" id="xbk" type="button">Download backup (with receipts)</button><button class="btn" id="xrs" type="button">Restore backup</button><input type="file" id="xfile" accept=".json,application/json" hidden></div>
+    <p class="d" id="xmsg" style="margin:8px 0 0"></p></div></details>
 
   <div class="tools">
     <button class="btn" id="copy" type="button">Copy as text</button>
@@ -193,11 +213,11 @@ function render(){
   var op=(data.open||0)+net(before);
   inM.sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:b.id-a.id});
   var tin=0,tout=0,lin="",lout="",cats={};
-  inM.forEach(function(i){if(i.t==="r"){tin+=i.amt;lin+=rowHtml(i)}else{tout+=i.amt;lout+=rowHtml(i);if(!i.loan&&i.cat!=="Loan settlement")cats[i.cat||"Uncategorised"]=(cats[i.cat||"Uncategorised"]||0)+i.amt}});
+  inM.forEach(function(i){if(i.sav)return;if(i.t==="r"){tin+=i.amt;lin+=rowHtml(i)}else{tout+=i.amt;lout+=rowHtml(i);if(!i.loan&&i.cat!=="Loan settlement")cats[i.cat||"Uncategorised"]=(cats[i.cat||"Uncategorised"]||0)+i.amt}});
   $("lin").innerHTML=lin||'<li class="empty">Nothing received.</li>';
   $("lout").innerHTML=lout||'<li class="empty">Nothing spent.</li>';
   $("op").textContent=fmt(op);$("tin").textContent=$("h1").textContent=fmt(tin);
-  $("tout").textContent=$("h2").textContent=fmt(tout);$("bal").textContent=fmt(op+tin-tout);
+  $("tout").textContent=$("h2").textContent=fmt(tout);var sv=net(inM.filter(function(i){return i.sav}));$("bal").textContent=fmt(op+tin-tout+sv);$("svm").textContent=sv?(sv<0?"Moved to savings in this period: "+fmt(-sv):"Taken from savings in this period: "+fmt(sv)):"";
   // limit
   var L=data.limit||0,lim=$("lim");
   if(L>0&&!all){var pct=Math.round(tout/L*100);lim.style.display="block";
@@ -215,7 +235,7 @@ function render(){
   // recurring
   $("rl").innerHTML=data.rec.map(function(r){return '<li style="padding-left:0;padding-right:0"><span>'+esc(r.note)+'<div class="d">'+(r.t==="r"?"Received":"Spent")+' on day '+r.day+(r.cat?" · "+esc(r.cat):"")+'</div></span><b class="num">'+fmt(r.amt)+'</b><button class="x" data-rdel="'+r.id+'" aria-label="Remove">×</button></li>'}).join("");
   $("cats").innerHTML=data.cats.map(function(c){return '<option value="'+esc(c)+'">'}).join("");
-  $("open").value=data.open||0;count();
+  $("open").value=data.open||0;count();savRender();
 }
 function count(){var tot=0;document.querySelectorAll("#den input").forEach(function(i){tot+=(+i.value||0)*(+i.dataset.v)});
   var bal=(data.open||0)+net(data.items),d=tot-bal;
@@ -250,10 +270,43 @@ $("radd").onclick=function(){var a=parseFloat($("ra").value),n=$("rn").value.tri
   addCat($("rcat").value);data.rec.push({id:Date.now(),t:$("rt").value,amt:a,cat:$("rcat").value.trim(),note:n,day:d,last:ym(pm)});
   $("ra").value=$("rn").value="";applyRec();save();render()};
 [500,200,100,50,20,10,5,2,1].forEach(function(v){var l=document.createElement("label");l.innerHTML="₹"+v+' ×<input type="number" min="0" data-v="'+v+'" inputmode="numeric">';l.firstChild.nextSibling.oninput=count;$("den").appendChild(l)});
-$("clear").onclick=function(){if(this.dataset.arm){data.items.forEach(function(i){try{localStorage.removeItem("cl-r-"+i.id)}catch(x){}});data.items=[];data.rec=[];data.open=0;save();render();this.textContent="Clear all";delete this.dataset.arm}else{this.dataset.arm=1;this.textContent="Tap again to confirm"}};
+$("clear").onclick=function(){if(this.dataset.arm){data.items.forEach(function(i){try{localStorage.removeItem("cl-r-"+i.id)}catch(x){}});data.items=[];data.rec=[];data.goal=null;data.open=0;save();render();this.textContent="Clear all";delete this.dataset.arm}else{this.dataset.arm=1;this.textContent="Tap again to confirm"}};
 $("copy").onclick=function(){var t="Cash ledger\n";data.items.slice().sort(function(a,b){return a.date<b.date?-1:1}).forEach(function(i){t+=i.date+"\t"+(i.t==="r"?"Received":"Spent")+"\t"+i.amt+"\t"+(i.cat||"")+"\t"+i.note+"\n"});
   t+="Balance: "+fmt((data.open||0)+net(data.items));var b=this;try{navigator.clipboard.writeText(t).then(function(){b.textContent="Copied";setTimeout(function(){b.textContent="Copy as text"},1500)})}catch(e){}};
 $("date").value=today();
+function savTotal(){return data.items.reduce(function(a,i){return a+(i.sav==="in"?i.amt:i.sav==="out"?-i.amt:0)},0)}
+function savRender(){
+  var tot=savTotal(),g=data.goal||{},h='<p style="margin:0 0 8px">Saved so far: <b class="num">'+fmt(tot)+'</b></p>',list="";
+  if(g.amt>0){var p=Math.max(0,Math.min(100,Math.round(tot/g.amt*100)));h+='<div class="d">'+esc(g.name||"Goal")+': '+p+'% of '+fmt(g.amt)+(tot<g.amt?' · '+fmt(g.amt-tot)+' to go':' · reached')+'</div><div class="bar"><i style="width:'+p+'%"></i></div>'}
+  $("savs").innerHTML=h;$("gn").value=g.name||"";$("gt").value=g.amt||"";
+  data.items.filter(function(i){return i.sav}).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:b.id-a.id}).forEach(function(i){
+    list+='<li style="padding-left:0;padding-right:0"><span>'+esc(i.note)+'<div class="d">'+dstr(i.date)+' · '+(i.sav==="in"?"Moved to savings":"Withdrawn")+'</div></span><b class="num" style="color:var(--'+(i.sav==="in"?"in":"out")+')">'+(i.sav==="in"?"+":"-")+fmt(i.amt)+'</b><button class="x" data-id="'+i.id+'" aria-label="Delete entry">×</button></li>'});
+  $("svl").innerHTML=list||'<li class="empty" style="padding-left:0">No savings yet.</li>'}
+function sv(dir){var a=parseFloat($("sva").value);if(!(a>0))return;
+  if(dir==="out"&&a>savTotal()+1e-9){alert("You only have "+fmt(savTotal())+" in savings.");return}
+  data.items.push({id:Date.now(),t:dir==="in"?"s":"r",amt:a,date:today(),cat:"Savings",note:$("svn").value.trim()||(dir==="in"?"Moved to savings":"Withdrawn from savings"),sav:dir});
+  $("sva").value=$("svn").value="";save();render()}
+$("svin").onclick=function(){sv("in")};$("svout").onclick=function(){sv("out")};
+$("gn").onchange=$("gt").onchange=function(){data.goal={name:$("gn").value.trim(),amt:parseFloat($("gt").value)||0};save();render()};
+function dl(name,text,mime){var b=new Blob([text],{type:mime}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1000)}
+$("xcsv").onclick=function(){var m=$("mon").value,all=$("xp").value==="all"||m==="all";
+  var rows=data.items.filter(function(i){return all||i.date.slice(0,7)===m}).sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:a.id-b.id});
+  var q=function(v){return '"'+String(v==null?"":v).replace(/"/g,'""')+'"'};
+  var ty=function(i){return i.sav?(i.sav==="in"?"Savings deposit":"Savings withdrawal"):i.loan?(i.loan==="lent"?"Lent":"Borrowed"):(i.t==="r"?"Received":"Spent")};
+  var out=["Date,Type,Amount,Category,Note,Bill no,Settled,Has receipt"];
+  rows.forEach(function(i){out.push([i.date,ty(i),i.amt,q(i.cat),q(i.note),q(i.ref),i.settled?"Yes":"",i.rc?"Yes":""].join(","))});
+  dl("cash-ledger-"+(all?"all":m)+".csv","\ufeff"+out.join("\n"),"text/csv;charset=utf-8");$("xmsg").textContent=rows.length+" entries exported to CSV."};
+$("xbk").onclick=function(){var rc={};data.items.forEach(function(i){if(i.rc){try{var x=localStorage.getItem("cl-r-"+i.id);if(x)rc[i.id]=x}catch(e){}}});
+  dl("cash-ledger-backup-"+today()+".json",JSON.stringify({app:"cash-ledger",v:2,data:data,receipts:rc}),"application/json");$("xmsg").textContent="Backup downloaded."};
+$("xrs").onclick=function(){$("xfile").click()};
+$("xfile").onchange=function(){var f=this.files[0];this.value="";if(!f)return;var r=new FileReader();
+  r.onload=function(){try{var j=JSON.parse(r.result);if(j.app!=="cash-ledger"||!j.data||!Array.isArray(j.data.items))throw 0;
+    if(!confirm("Replace all current data with this backup?"))return;
+    data.items.forEach(function(i){try{localStorage.removeItem("cl-r-"+i.id)}catch(e){}});
+    ["open","items","cats","limit","rec","goal"].forEach(function(k){if(j.data[k]!==undefined)data[k]=j.data[k]});
+    Object.keys(j.receipts||{}).forEach(function(id){try{localStorage.setItem("cl-r-"+id,j.receipts[id])}catch(e){}});
+    save();render();$("xmsg").textContent="Backup restored."}catch(e){$("xmsg").textContent="That file is not a valid Cash Ledger backup."}};
+  r.readAsText(f)};
 load();applyRec();$("mon").value=ym(new Date());setKind("r");render();
 })();
 </script>
