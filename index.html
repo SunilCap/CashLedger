@@ -94,10 +94,31 @@ input,select{font-size:16px;border-radius:10px;padding:10px 12px;min-height:44px
 summary{padding:14px 16px}
 .x{padding:6px 12px}
 .lk{padding:4px 0}
+.ab{display:flex;gap:8px;align-items:center}
+.eye{background:rgba(255,255,255,.16);border:0;border-radius:50%;width:36px;height:36px;color:#fff;display:grid;place-items:center;cursor:pointer;padding:0}
+body:not(.hide) .eh,body.hide .ev{display:none}
+body.hide .num:not(.rv){font-size:0!important;cursor:pointer}
+body.hide .num:not(.rv)::after{content:"₹ ••••";font-size:15px;letter-spacing:1px}
+body.hide .box b.num:not(.rv)::after{font-size:20px}
+html,body{max-width:100%;overflow-x:hidden}
+.wrap,form,.col,.box,details,.pn{min-width:0;max-width:100%}
+form{grid-template-columns:repeat(3,minmax(0,1fr))}
+form>*{min-width:0}
+label{min-width:0}
+form input,form select{width:100%;max-width:100%;min-width:0}
+input[type=date]{-webkit-appearance:none;appearance:none}
+.seg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.seg button{padding:9px 2px;font-size:13px;white-space:nowrap;min-width:0}
+.sum{grid-template-columns:repeat(4,minmax(0,1fr))}
+.cols{grid-template-columns:repeat(2,minmax(0,1fr))}
+li{grid-template-columns:minmax(0,1fr) auto auto;overflow-wrap:anywhere}
+@media (max-width:700px){form{grid-template-columns:repeat(2,minmax(0,1fr))}.sum{grid-template-columns:repeat(2,minmax(0,1fr))}.cols{grid-template-columns:minmax(0,1fr)}.box b{font-size:18px}.den{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
-<body>
-<header class="appbar"><h1>Cash Ledger</h1><select id="mon" aria-label="Month"></select></header>
+<body class="hide">
+<header class="appbar"><h1>Cash Ledger</h1><div class="ab"><button class="eye" id="eye" type="button" aria-label="Show or hide amounts" aria-pressed="true">
+<svg class="ev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+<svg class="eh" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/><line x1="3" y1="3" x2="21" y2="21"/></svg></button><select id="mon" aria-label="Month"></select></div></header>
 <div class="wrap">
   <div class="sum">
     <div class="box"><small>Opening</small><b class="num" id="op"></b></div>
@@ -182,7 +203,7 @@ var KEY="cash-ledger-v1",kind="r",pend=null;
 var data={open:0,items:[],cats:["Food","Travel","Rent","Salary","Bills","Shopping","Health","Other"],limit:0,rec:[]};
 var $=function(i){return document.getElementById(i)};
 var fmt=function(n){return (n<0?"-":"")+"₹"+Math.abs(n).toLocaleString("en-IN",{maximumFractionDigits:2})};
-var pad=function(n){return String(n).padStart(2,"0")};
+var N=function(v){return '<span class="num">'+fmt(v)+'</span>'};var pad=function(n){return String(n).padStart(2,"0")};
 var ym=function(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)};
 var today=function(){var n=new Date();return ym(n)+"-"+pad(n.getDate())};
 function load(){try{var s=JSON.parse(localStorage.getItem(KEY));if(s)for(var k in s)data[k]=s[k]}catch(e){}}
@@ -217,11 +238,11 @@ function render(){
   $("lin").innerHTML=lin||'<li class="empty">Nothing received.</li>';
   $("lout").innerHTML=lout||'<li class="empty">Nothing spent.</li>';
   $("op").textContent=fmt(op);$("tin").textContent=$("h1").textContent=fmt(tin);
-  $("tout").textContent=$("h2").textContent=fmt(tout);var sv=net(inM.filter(function(i){return i.sav}));$("bal").textContent=fmt(op+tin-tout+sv);$("svm").textContent=sv?(sv<0?"Moved to savings in this period: "+fmt(-sv):"Taken from savings in this period: "+fmt(sv)):"";
+  $("tout").textContent=$("h2").textContent=fmt(tout);var sv=net(inM.filter(function(i){return i.sav}));$("bal").textContent=fmt(op+tin-tout+sv);$("svm").innerHTML=sv?(sv<0?"Moved to savings in this period: "+N(-sv):"Taken from savings in this period: "+N(sv)):"";
   // limit
   var L=data.limit||0,lim=$("lim");
   if(L>0&&!all){var pct=Math.round(tout/L*100);lim.style.display="block";
-    $("limt").textContent="Spent "+fmt(tout)+" of "+fmt(L)+" limit ("+pct+"%)"+(pct>=100?" — limit crossed":pct>=80?" — close to your limit":"");
+    $("limt").innerHTML="Spent "+N(tout)+" of "+N(L)+" limit ("+pct+"%)"+(pct>=100?" — limit crossed":pct>=80?" — close to your limit":"");
     $("limb").style.width=Math.min(pct,100)+"%";$("limb").style.background=pct>=100?"var(--out)":pct>=80?"var(--warn)":"var(--in)"}else lim.style.display="none";
   $("limin").value=L||"";
   // categories
@@ -239,7 +260,7 @@ function render(){
 }
 function count(){var tot=0;document.querySelectorAll("#den input").forEach(function(i){tot+=(+i.value||0)*(+i.dataset.v)});
   var bal=(data.open||0)+net(data.items),d=tot-bal;
-  $("cres").innerHTML="Counted <b class='num'>"+fmt(tot)+"</b> vs ledger <b class='num'>"+fmt(bal)+"</b>: "+(tot===0?"enter your notes and coins.":d===0?"matches.":d<0?"<b style='color:var(--out)'>short by "+fmt(-d)+"</b>. Check for a missing spend.":"<b style='color:var(--warn)'>extra "+fmt(d)+"</b>. Check for a missing receipt entry.")}
+  $("cres").innerHTML="Counted <b class='num'>"+fmt(tot)+"</b> vs ledger <b class='num'>"+fmt(bal)+"</b>: "+(tot===0?"enter your notes and coins.":d===0?"matches.":d<0?"<b style='color:var(--out)'>short by</b> "+N(-d)+". Check for a missing spend.":"<b style='color:var(--warn)'>extra</b> "+N(d)+". Check for a missing receipt entry.")}
 // form kind
 function setKind(k){kind=k;document.querySelectorAll(".seg button").forEach(function(b){var o=b.dataset.k===k;b.className=o?"on "+(k==="r"?"r":k==="s"?"s":"l"):""});
   var sp=k==="s"||k==="lent";$("rcw").style.display=sp?"flex":"none";$("refw").style.display=sp?"flex":"none"}
@@ -277,7 +298,7 @@ $("date").value=today();
 function savTotal(){return data.items.reduce(function(a,i){return a+(i.sav==="in"?i.amt:i.sav==="out"?-i.amt:0)},0)}
 function savRender(){
   var tot=savTotal(),g=data.goal||{},h='<p style="margin:0 0 8px">Saved so far: <b class="num">'+fmt(tot)+'</b></p>',list="";
-  if(g.amt>0){var p=Math.max(0,Math.min(100,Math.round(tot/g.amt*100)));h+='<div class="d">'+esc(g.name||"Goal")+': '+p+'% of '+fmt(g.amt)+(tot<g.amt?' · '+fmt(g.amt-tot)+' to go':' · reached')+'</div><div class="bar"><i style="width:'+p+'%"></i></div>'}
+  if(g.amt>0){var p=Math.max(0,Math.min(100,Math.round(tot/g.amt*100)));h+='<div class="d">'+esc(g.name||"Goal")+': '+p+'% of '+N(g.amt)+(tot<g.amt?' · '+N(g.amt-tot)+' to go':' · reached')+'</div><div class="bar"><i style="width:'+p+'%"></i></div>'}
   $("savs").innerHTML=h;$("gn").value=g.name||"";$("gt").value=g.amt||"";
   data.items.filter(function(i){return i.sav}).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:b.id-a.id}).forEach(function(i){
     list+='<li style="padding-left:0;padding-right:0"><span>'+esc(i.note)+'<div class="d">'+dstr(i.date)+' · '+(i.sav==="in"?"Moved to savings":"Withdrawn")+'</div></span><b class="num" style="color:var(--'+(i.sav==="in"?"in":"out")+')">'+(i.sav==="in"?"+":"-")+fmt(i.amt)+'</b><button class="x" data-id="'+i.id+'" aria-label="Delete entry">×</button></li>'});
@@ -314,6 +335,16 @@ load();applyRec();$("mon").value=ym(new Date());setKind("r");render();
 ["gesturestart","gesturechange","gestureend"].forEach(function(t){document.addEventListener(t,function(e){e.preventDefault()})});
 document.addEventListener("touchmove",function(e){if(e.touches.length>1)e.preventDefault()},{passive:false});
 if("serviceWorker" in navigator)window.addEventListener("load",function(){navigator.serviceWorker.register("./sw.js").catch(function(){})});
+</script>
+<script>
+(function(){var b=document.body,e=document.getElementById("eye");
+try{if(localStorage.getItem("cl-hide")==="0")b.classList.remove("hide")}catch(x){}
+function sync(){e.setAttribute("aria-pressed",b.classList.contains("hide"))}sync();
+e.onclick=function(){b.classList.toggle("hide");document.querySelectorAll(".rv").forEach(function(n){n.classList.remove("rv")});
+  try{localStorage.setItem("cl-hide",b.classList.contains("hide")?"1":"0")}catch(x){}sync()};
+document.addEventListener("click",function(ev){var n=ev.target.closest&&ev.target.closest(".num");
+  if(n&&b.classList.contains("hide")&&!n.classList.contains("rv")){n.classList.add("rv");setTimeout(function(){n.classList.remove("rv")},4000)}});
+})();
 </script>
 </body>
 </html>
