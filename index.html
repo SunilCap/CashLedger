@@ -113,6 +113,14 @@ input[type=date]{-webkit-appearance:none;appearance:none}
 .cols{grid-template-columns:repeat(2,minmax(0,1fr))}
 li{grid-template-columns:minmax(0,1fr) auto auto;overflow-wrap:anywhere}
 @media (max-width:700px){form{grid-template-columns:repeat(2,minmax(0,1fr))}.sum{grid-template-columns:repeat(2,minmax(0,1fr))}.cols{grid-template-columns:minmax(0,1fr)}.box b{font-size:18px}.den{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.num{cursor:pointer}
+.num::before{content:"";display:inline-block;width:14px;height:14px;margin-right:6px;vertical-align:-2px;background:currentColor;opacity:.55;-webkit-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z'/><circle cx='12' cy='12' r='3'/></svg>") center/contain no-repeat;mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z'/><circle cx='12' cy='12' r='3'/></svg>") center/contain no-repeat}
+.box b.num::before{width:16px;height:16px}
+body.hide .num:not(.rv)::before,body:not(.hide) .num.hd::before{-webkit-mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z'/><circle cx='12' cy='12' r='3'/><line x1='3' y1='3' x2='21' y2='21'/></svg>");mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z'/><circle cx='12' cy='12' r='3'/><line x1='3' y1='3' x2='21' y2='21'/></svg>")}
+body:not(.hide) .num.hd{font-size:0!important}
+body:not(.hide) .num.hd::after{content:"₹ ••••";font-size:15px;letter-spacing:1px}
+body:not(.hide) .box b.num.hd::after{font-size:20px}
+body.hide #open:not(:focus),body.hide #limin:not(:focus),body.hide #gt:not(:focus),body.hide #ra:not(:focus){-webkit-text-security:disc}
 </style>
 </head>
 <body class="hide">
@@ -340,10 +348,10 @@ if("serviceWorker" in navigator)window.addEventListener("load",function(){naviga
 (function(){var b=document.body,e=document.getElementById("eye");
 try{if(localStorage.getItem("cl-hide")==="0")b.classList.remove("hide")}catch(x){}
 function sync(){e.setAttribute("aria-pressed",b.classList.contains("hide"))}sync();
-e.onclick=function(){b.classList.toggle("hide");document.querySelectorAll(".rv").forEach(function(n){n.classList.remove("rv")});
+e.onclick=function(){b.classList.toggle("hide");document.querySelectorAll(".rv,.hd").forEach(function(n){n.classList.remove("rv");n.classList.remove("hd")});
   try{localStorage.setItem("cl-hide",b.classList.contains("hide")?"1":"0")}catch(x){}sync()};
 document.addEventListener("click",function(ev){var n=ev.target.closest&&ev.target.closest(".num");
-  if(n&&b.classList.contains("hide")&&!n.classList.contains("rv")){n.classList.add("rv");setTimeout(function(){n.classList.remove("rv")},4000)}});
+  if(n)n.classList.toggle(b.classList.contains("hide")?"rv":"hd")});
 })();
 </script>
 </body>
